@@ -3,6 +3,7 @@
 https://community.sophos.com/intercept-x-endpoint/f/recommended-reads/135097/querycorner-june2022-data-lake-device-card---windows
 
 ############ 
+
 -- Device Card Query for Datalake
 -- VARIABLE:   device_name   STRING    NOTE: Specify full Device Name in variable.
 -- NOTE: This is a Single Device Card Query, Running this query for all or multiple devices will return incomplete/appropriate result. DO NOT USE WILDCARD in VARIABLE
