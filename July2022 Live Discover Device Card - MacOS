@@ -1,0 +1,54 @@
+##### SOPHOS COMMUNITY POST #####
+
+https://community.sophos.com/intercept-x-endpoint/f/recommended-reads/135355/querycorner-july2022-live-discover-device-card---macos
+
+############ 
+
+-- Cards orient the results in five columns
+--    ATRIBUTE - The thing being checked
+--    VALUE - The result of the evaluation
+--    CONTEXT - Some useful information related to the Attribute
+--    CONTEXT_DATA - The inoformation for the context information being shown
+--    NOTES - Some additional relevant information on the Attribute/Value
+
+
+-- BLANK LINE BETWEEN EACH DEVICE
+SELECT CAST(' ' AS TEXT) ATTRIBUTE, CAST(' ' AS TEXT) VALUE, CAST(' ' AS TEXT) CONTEXT, CAST(' ' AS TEXT) CONTEXT_DATA, CAST(' ' AS TEXT) NOTES
+UNION ALL
+SELECT CAST('=========================' AS TEXT) ATTRIBUTE, CAST('=========================' AS TEXT) VALUE, CAST('=========================' AS TEXT) CONTEXT, CAST('=========================' AS TEXT) CONTEXT_DATA, CAST('=========================' AS TEXT) NOTES
+
+UNION ALL
+
+--Device Info
+SELECT CAST('DEVICE INFO ' AS TEXT) ATTRIBUTE, CAST(' ' AS TEXT) VALUE, CAST(' ' AS TEXT) CONTEXT, CAST(' ' AS TEXT) CONTEXT_DATA, CAST(' ' AS TEXT) NOTES
+
+UNION ALL
+
+-- Operating System information
+SELECT 'OPERATING SYSTEM' ATTRIBUTE, name VALUE, 'VERSION' CONTEXT, version CONTEXT_DATA,  'INSTALLED ON: ' || datetime(install_date,'unixepoch') NOTES
+FROM os_version
+
+UNION ALL
+
+-- Current IP/MAC and DHCP Server for the device
+SELECT 'IP-ADDRESS' ATTRIBUTE, CAST(ia.address AS TEXT) VALUE, 'MAC ADDRESS' CONTEXT, id.mac CONTEXT_DATA, '' NOTES
+FROM interface_addresses ia JOIN interface_details id ON id.interface = ia.interface
+WHERE ia.address NOT IN ('::1','127.0.0.1') AND ia.address NOT LIKE 'fe80::%'
+
+UNION ALL
+
+-- Disk Encryption Status
+SELECT DISTINCT 'DISK ENCRYPTION STATUS' ATTRIBUTE, 'Name: ' || disk_events.name ||CHAR(10)||'Device Path: '|| device VALUE, encryption_status CONTEXT, type CONTEXT_DATA, '' NOTES
+FROM disk_encryption JOIN disk_events ON disk_encryption.name = disk_events.device WHERE encryption_status <> 'undefined'
+
+UNION ALL
+
+--Device Uptime
+SELECT 'UPTIME' ATTRIBUTE, 'DD:HH:MM:SS' VALUE, days||':'||hours||':'||minutes||':'||seconds CONTEXT, '' CONTEXT_DATA, '' NOTES
+FROM uptime
+
+UNION ALL
+
+--LOGGED IN USER
+SELECT 'LOGGED IN USER' ATTRIBUTE, 'User' VALUE, user CONTEXT, '' CONTEXT_DATA, '' NOTES
+FROM logged_in_users
