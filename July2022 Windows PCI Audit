@@ -1,0 +1,98 @@
+##### SOPHOS COMMUNITY POST #####
+
+https://community.sophos.com/intercept-x-endpoint/f/recommended-reads/135545/querycorner-july2022-windows-pci-audit-report
+
+############ 
+
+--PCI AV Compliance
+--Author: @jkopacko - Jeramy Kopacko
+--This query will build virtual table conditions and join the information to produce a per agent compliance card through Live Endpoint for Windows devices
+
+--Grab FQDN
+WITH fullyQDN AS(
+    SELECT hostname AS FQDN
+    FROM system_info
+),
+--Grab local IP from interface 
+localIP AS (
+    SELECT address 
+    FROM interface_addresses 
+    WHERE type NOT IN ('auto', 'unknown') 
+    /*If you use IP6, remove line 11*/
+    AND mask LIKE '%255%'
+),
+--Grab OS Information
+winVersion AS (
+    SELECT name,
+        build,
+        CASE 
+            WHEN build = 22000 THEN '21H2'
+            WHEN build = 19044 THEN '21H2'
+            WHEN build = 19043 THEN '21H1'
+            WHEN build = 19042 THEN '20H2'
+            WHEN build = 19041 THEN '2004'
+            WHEN build = 18363 THEN '1909'
+            WHEN build = 18362 THEN '1903'
+            WHEN build = 17763 THEN '1809'
+            WHEN build = 17134 THEN '1803'
+            WHEN build = 16299 THEN '1709'
+            WHEN build = 15069 THEN '1703'
+            WHEN build = 14393 THEN '1607'
+            WHEN build = 10586 THEN '1511'
+            WHEN build = 10240 THEN '1507'
+        END AS winVersion,
+    arch
+    FROM os_version
+),
+--Grab Tamper Protection Status
+tamperStatus AS (
+    SELECT
+        CASE 
+            WHEN data LIKE '1' THEN 'ENABLED'
+            WHEN data LIKE '0' THEN 'DISABLED' 
+        END
+        tamperProtection 
+    FROM registry 
+    WHERE key='HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Sophos Endpoint Defense\TamperProtection\Config' 
+    AND name='SEDEnabled' 
+),
+--Grab last Sophos Update Timestamp
+sophosUpdate AS (
+    SELECT datetime(mtime,'unixepoch','localtime') AS lastUpdate
+    FROM file
+    WHERE path = 'C:\ProgramData\Sophos\AutoUpdate\Logs\SophosUpdate.log'
+),
+--Grab last online activity
+agentOnline AS (
+    SELECT datetime(mtime,'unixepoch','localtime') AS lastActivity
+    FROM file
+    WHERE path = 'C:\ProgramData\Sophos\Management Communications System\Endpoint\Logs\McsClient.log'
+),
+--XML Config Table
+configXML AS (
+    SELECT line
+    FROM grep
+    WHERE path = 'C:\ProgramData\Sophos\AutoUpdate\data\repo\config.xml'
+    AND pattern = '<'
+),
+--XML Parsed for Suite Info
+suiteXML AS (
+    SELECT rtrim(ltrim(trim(line),'<'),'>') AS suite
+    FROM configXML
+    WHERE suite LIKE 'suite ref="%'
+),
+suiteVersion AS (
+    SELECT rtrim(ltrim(suite,'suite ref="dds3.'),'.dat" /') AS suiteVersion
+    FROM suiteXML
+    WHERE suiteVersion LIKE 'WindowsCloudAV%'
+),
+pciAudit AS (
+SELECT * FROM fullyQDN
+JOIN localIP
+JOIN winVersion
+JOIN tamperStatus
+JOIN sophosUpdate
+JOIN agentOnline
+JOIN suiteVersion
+)
+SELECT * FROM pciAudit
