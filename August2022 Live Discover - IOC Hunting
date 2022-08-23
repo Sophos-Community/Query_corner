@@ -1,0 +1,83 @@
+##### SOPHOS COMMUNITY POST #####
+
+https://community.sophos.com/intercept-x-endpoint/f/recommended-reads/135734/querycorner-august2022-live-discover---ioc-hunting
+
+############ 
+
+WITH IOC_HUNT_BY_TYPE AS (
+
+WITH IOC_LIST (ThreatActor, IOC_TYPE, Indicator) AS (
+VALUES
+('Cobalt','MD5','cbc1dc536cd6f4fb9648e229e5d23361'),
+('Cobalt','MD5','ebe2f8df39b4a94fb408580a728d351f'),
+('Cobalt','MD5','29e2ef8ef5c6ff95e98bff095e63dc05'),
+('Cobalt','MD5','dcfd60883c73c3d92fceb6ac910d5b80'),
+('Cobalt','MD5','b40b30329489d342b2aa5ef8309ad388'),
+('Cobalt','MD5','7edf943ed251fa480c5ca5abb2446c75'),
+('Cobalt','MD5','1c3b8ae594cb4ce24c2680b47cebf808'),
+('Cobalt','IP','83.171.237.173'),
+('Cobalt','IP','192.99.221.77'),
+('Cobalt','IP','208.75.122.11'),
+('Cobalt','Domain','usaid.theyardservice.com'),
+('Cobalt','Domain','dataplane.theyardservice.com/jquery-3.3.1.min.woff2'),
+('Cobalt','Domain','cdn.theyardservice.com/jquery-3.3.1.min.woff2'),
+('Cobalt','Domain','static.theyardservice.com/jquery-3.3.1.min.woff2'),
+('Cobalt','Domain','static.theyardservice.com'),
+('Cobalt','Domain','worldhomeoutlet.com/jquery-3.3.1.min.woff2'),
+('Cobalt','Domain','worldhomeoutlet.com'),
+('Cobalt','Domain','cdn.theyardservice.com'),
+('Cobalt','Filename','ICA-declass.iso'),
+('Cobalt','Filename','Reports.lnk'),
+('Cobalt','Filename','ICA-declass.pdf'),
+('Cobalt','Filename','DOCUMENT.DLL')
+
+)
+/* Search the MD5 data for matches */
+SELECT DISTINCT 
+CASE h.path NOT NULL 
+WHEN 1 THEN 'Detected IOC >' || h.path 
+ELSE 'IOC NOT FOUND' 
+END Result,
+ThreatActor, IOC_TYPE, Indicator
+FROM IOC_LIST ioc JOIN processes p ON 1
+LEFT JOIN hash h on h.path = p.path AND h.md5 = ioc.Indicator
+WHERE ioc.ioc_type = 'MD5'
+
+UNION ALL 
+
+/* Search the Process and Filename matches */
+SELECT DISTINCT
+CASE p.path NOT NULL
+WHEN 1 THEN 'DETECTED IOC >' || p.path
+ELSE "IOC NOT FOUND"
+END Result,
+ThreatActor, IOC_TYPE, Indicator
+FROM IOC_LIST ioc LEFT JOIN processes p on p.path LIKE "'%'" || ioc.indicator || "'%'"
+WHERE ioc.ioc_type = 'Filename'
+
+UNION ALL
+
+/* Search the IP Matches */
+SELECT DISTINCT
+CASE sij.SophosPID NOT NULL
+WHEN 1 THEN 'DETECTED IOC >' || sij.SophosPID
+ELSE 'IOC NOT FOUND'
+END Reuslt,
+ThreatActor, IOC_TYPE, Indicator
+FROM IOC_LIST ioc LEFT JOIN sophos_ip_journal sij ON sij.destination = ioc.indicator AND sij.time > strftime('%s','now','-7 days')
+WHERE ioc.ioc_type = 'IP'
+
+UNION ALL
+
+/* Search the Domain Matches */
+SELECT DISTINCT
+CASE sij.SophosPID NOT NULL
+WHEN 1 THEN 'DETECTED IOC >' || sij.SophosPID
+ELSE 'IOC NOT FOUND'
+END Reuslt,
+ThreatActor, IOC_TYPE, Indicator
+FROM IOC_LIST ioc LEFT JOIN sophos_ip_journal sij ON sij.destination = ioc.indicator AND sij.time > strftime('%s','now','-7 days')
+WHERE ioc.ioc_type = 'Domain'
+
+)
+SELECT * FROM IOC_HUNT_BY_TYPE;
