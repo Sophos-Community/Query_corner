@@ -1,0 +1,21 @@
+##### SOPHOS COMMUNITY POST #####
+
+https://community.sophos.com/intercept-x-endpoint/f/recommended-reads/135819/querycorner-august2022-deep-diving-into-rdp
+
+############ 
+
+/*
+Set "Days to look back from now" as a variable type string
+This will define how many days to look back on
+*/
+
+SELECT 
+   datetime(time,'unixepoch') 'Date-Time', 
+   (strftime('%s','now')-time)/(3600*24) 'Days ago' ,eventid, 'TS Remote' AS Source,
+   JSON_EXTRACT(data, '$.UserData.Param1') AS Name,
+   JSON_EXTRACT(data, '$.UserData.Param2') AS Source_Machine_Network,
+   JSON_EXTRACT(data, '$.UserData.Param3') AS Source_IP
+FROM sophos_windows_events
+WHERE source = 'Microsoft-Windows-TerminalServices-RemoteConnectionManager/Operational' AND 
+   eventid = 1149 AND 
+   time > strftime('%s', 'now', '-$$Days to look back from now$$ days');
