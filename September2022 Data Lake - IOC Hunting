@@ -1,0 +1,81 @@
+##### SOPHOS COMMUNITY POST #####
+
+https://community.sophos.com/intercept-x-endpoint/f/recommended-reads/136396/querycorner-september2022-data-lake---ioc-hunting
+
+############ 
+
+WITH IOC_LIST(IOC_Type, Indicator, note) AS (
+VALUES
+('domain','avsvmcloud.com','malware/callhome'),
+('domain','digitalcollege.org','malware/callhome'),
+('domain','freescanonline.com','malware/repository'),
+('domain','microsoft.com','Test'),
+('domain','windowsupdate.com','Test'),
+('ip','13.59.205.66','C2 malware/repository'),
+('ip','52.168.117.170','Test'),
+('sha256','643ec58e82e0272c97c2a59f6020970d881af19c0ad5029db9c958c13b6558c7','Test'),
+('sha256','d0d626deb3f9484e649294a8dfa814c5568f846d5aa02d4cdad5d041a29d5600','Troj/SunBurst-A(Installer|CORE-2019.4.5220.20574-SolarWinds-Core-v2019.4.5220-Hotfix5.msp')
+)
+SELECT
+  xdr.meta_hostname AS ep_name,
+  xdr.timestamps,
+  xdr.name,
+  xdr.cmdline,
+  xdr.pids, 
+  xdr.sophos_pids,
+  xdr.username,
+  xdr.sha256,
+  xdr.domain,
+  xdr.clean_urls, 
+  xdr.source_ip, 
+  xdr.destination_ip, 
+  xdr.destination_port, 
+  xdr.protocol
+FROM 
+  IOC_LIST ioc
+LEFT JOIN xdr_data xdr ON xdr.domain LIKE ('%'||ioc.Indicator||'%')
+WHERE query_name = 'sophos_urls_windows'
+AND ioc.IOC_Type = 'domain'
+UNION ALL
+SELECT
+  xdr.meta_hostname AS ep_name,
+  xdr.timestamps,
+  xdr.name,
+  xdr.cmdline,
+  xdr.pids, 
+  xdr.sophos_pids,
+  xdr.username,
+  xdr.sha256,
+  xdr.domain,
+  xdr.clean_urls, 
+  xdr.source_ip, 
+  xdr.destination_ip, 
+  xdr.destination_port, 
+  xdr.protocol
+FROM
+  IOC_LIST ioc
+LEFT JOIN xdr_data xdr ON xdr.destination_ip LIKE ('%'||ioc.Indicator||'%')
+WHERE
+  query_name = 'sophos_ips_windows'
+AND ioc.IOC_Type = 'ip'
+UNION ALL
+SELECT
+  xdr.meta_hostname AS ep_name,
+  xdr.timestamps,
+  xdr.name,
+  xdr.cmdline,
+  xdr.pids, 
+  xdr.sophos_pids,
+  xdr.username,
+  xdr.sha256,
+  xdr.domain,
+  xdr.clean_urls, 
+  xdr.source_ip, 
+  xdr.destination_ip, 
+  xdr.destination_port, 
+  xdr.protocol
+FROM 
+  IOC_LIST ioc
+LEFT JOIN xdr_data xdr ON sha256 = ioc.Indicator
+WHERE query_name IN ( 'running_processes_windows_sophos', 'running_processes_linux_events', 'running_processes_osx_events')
+AND ioc.IOC_Type = 'sha256'
